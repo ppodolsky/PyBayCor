@@ -102,8 +102,8 @@ if __name__ == "__main__":
             mcmc.sample(iter = N, burn = min(5000, int(N/10)), thin = 1)
 
         for v in var_list:
-            plot(mcmc.trace(v.__name__)[:], v.__doc__, "{}_{}.png".format(name, v.__name__))
+            plot(mcmc.trace(v.__name__)[:], v.__doc__, "pics/{}_{}.png".format(name, v.__name__))
 
         for x,y in combinations(var_list, 2):
             plot_2d_hist(mcmc.trace(x.__name__)[:], mcmc.trace(y.__name__)[:],
-                         "{}_{}-{}_hist.png".format(name, x.__name__, y.__name__))
+                         "pics/{}_{}-{}_hist.png".format(name, x.__name__, y.__name__))
