@@ -16,7 +16,7 @@ tstr = PyGammaCombo.TString
 # Constants
 sns.set_style("whitegrid")
 matplotlib.rcParams.update({'font.size': 10})
-N = 200000 # Sample size (N/10 used for burning out)
+N = 1000000 # Sample size (N/10 used for burning out)
 number_of_bins = 90
 load_last_model = False
 

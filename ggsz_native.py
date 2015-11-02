@@ -66,12 +66,12 @@ def print_hpd(var, lvl):
     print("{} {}% HPD: {}".format(var.__name__, int(lvl*100), pymc.utils.hpd(var.trace[:] , 1.-lvl)))
 
 if __name__ == "__main__":
-    for name, lower_limit, upper_limit in [('q1', 0, 180), ('q4', -180, 0)]:
+    for name, lower_limit, upper_limit in [('q1', 0, 180)]:
         print("Calculations for {}...".format(name))
         # Vars
         gamma = Uniform("gamma", doc="$\gamma$", lower=lower_limit, upper=upper_limit)
         deltaB = Uniform("deltaB", doc="$\delta_B$", lower=lower_limit, upper=upper_limit)
-        rB = Uniform("rB", doc='$r_B$', lower=0, upper=0.5)
+        rB = Uniform("rB", doc='$r_B$', lower=0.02, upper=0.2)
         var_list = [gamma, deltaB, rB]
 
         @deterministic
