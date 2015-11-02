@@ -15,6 +15,7 @@ matplotlib.rcParams.update({'font.size': 10})
 N = 1000000 # Sample size (N/10 used for burning out)
 number_of_bins = 90
 load_last_model = False
+experiment = commons.lumi3fb
 
 # Output fuctions
 def plot(trace, var_name, fname):
@@ -89,7 +90,7 @@ if __name__ == "__main__":
         #Averaged experiments
         @stochastic
         def vars(x_plus_gen=x_plus_gen, y_plus_gen=y_plus_gen, x_minus_gen=x_minus_gen, y_minus_gen=y_minus_gen, value=0):
-            return pymc.mv_normal_like([x_plus_gen, y_plus_gen, x_minus_gen, y_minus_gen], commons.y_exp, commons.y_covar_inv)
+            return pymc.mv_normal_like([x_plus_gen, y_plus_gen, x_minus_gen, y_minus_gen], experiment['y_exp'], experiment['y_covar_inv'])
 
         # Model
         if load_last_model:

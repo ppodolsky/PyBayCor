@@ -4,6 +4,9 @@ import scipy.optimize as opt
 from commons import *
 from sympy.utilities.lambdify import lambdify, implemented_function
 
+chi2_sym = (y_theo_sym - summer2015['y_exp']).T*summer2015['y_covar_inv']*(y_theo_sym - summer2015['y_exp'])
+chi2 = lambda args: lambdify(ys, chi2_sym, 'numpy')(*args)[0, 0]
+
 #Symbolic solutions
 
 #print("Symbolic: ")
