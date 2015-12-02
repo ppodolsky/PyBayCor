@@ -10,8 +10,6 @@ import matplotlib.pyplot as plt
 import matplotlib
 import matplotlib.ticker
 
-sys.path.append('/home/pygammacombo')
-
 import PyGammaCombo
 tstr = PyGammaCombo.TString
 
@@ -34,7 +32,7 @@ if __name__ == "__main__":
         rB = Uniform("rB", doc='$r_B$', lower=0.02, upper=0.2)
         var_list = [gamma, deltaB, rB]
         gce = PyGammaCombo.gammacombo_utils.getGammaComboEngine("")
-        cmb = gce.getCombiner(113)
+        cmb = gce.getCombiner(25)
         cmb.combine()
         parameters = cmb.getParameters()
         pdf = cmb.getPdf()
@@ -54,5 +52,6 @@ if __name__ == "__main__":
         mcmc.sample(iter = N, burn = min(5000, int(N/10)), thin = 1)
 
         for v in var_list:
-            with gzip.open("/output/{}.dat.gz".format(v.__name__), 'wb') as file:
+            plot(mcmc.trace(v.__name__)[:], v.__doc__, "output/{}_{}.png".format(name, v.__name__))
+            with gzip.open("output/{}.dat.gz".format(v.__name__), 'wb') as file:
                 file.write(mcmc.trace(v.__name__)[:].tostring())
