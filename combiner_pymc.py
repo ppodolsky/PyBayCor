@@ -18,7 +18,10 @@ tstr = PyGammaCombo.TString
 # Constants
 sns.set_style("whitegrid")
 matplotlib.rcParams.update({'font.size': 10})
-N = 1000000 # Sample size (N/10 used for burning out)
+if len(sys.argv) == 2: # Set sample size (N/10 used for burning out)
+    N = int(sys.argv[1])
+else:
+    N = 1000000
 pgc_utils = PyGammaCombo.gammacombo_utils
 cout = PyGammaCombo.gammacombo_utils.getCout()
 
