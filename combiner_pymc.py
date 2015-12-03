@@ -2,7 +2,6 @@ import pymc, seaborn as sns
 import gzip
 import commons
 from pymc import Exponential, deterministic, Poisson, Uniform, Normal, observed, MCMC, Matplot, stochastic
-from ggsz_native import plot, plot_2d_hist
 from argparse import ArgumentParser
 from operator import itemgetter
 
@@ -78,6 +77,6 @@ if __name__ == "__main__":
 
     # Output
     for v in desired_variables:
-        plot(mcmc.trace(v)[:], v, "output/{}_{}.png".format(combination, v))
+        commons.plot(mcmc.trace(v)[:], v, "output/{}_{}.png".format(combination, v))
         with gzip.open("output/{}.dat.gz".format(v), 'wb') as file:
             file.write(mcmc.trace(v)[:].tostring())

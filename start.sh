@@ -2,4 +2,4 @@
 cd /input
 export PYTHONPATH=$PYTHONPATH:/home/pygammacombo
 python3 combiner_pymc.py $@
-mv /input/output /output
+cp -r /input/output/ /
