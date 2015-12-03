@@ -3,6 +3,56 @@ import numpy as np
 import sympy as sp
 
 from sympy.utilities.lambdify import lambdify
+import matplotlib.pyplot as plt
+import pymc
+
+# Output fuctions
+def plot(trace, var_name, fname):
+    hpd9999 = pymc.utils.hpd(trace , 1.-0.9999)
+    hpd95 = pymc.utils.hpd(trace , 1.-0.95)
+    hpd683 = pymc.utils.hpd(trace , 1.-0.683)
+    trace_mean = trace.mean()
+
+    plt.autoscale(tight=True)
+    plt.tight_layout()
+
+    ax = plt.subplot(211)
+    plt.xticks(rotation=70)
+    plt.hist(trace[(hpd9999[0] < trace) & (trace < hpd9999[1])], histtype='stepfilled', bins=100, alpha=0.75, color="#A60628", normed=True)
+    plt.axvline(hpd95[0], color='black', alpha=0.55, linestyle='dashed', linewidth=1)
+    plt.axvline(hpd95[1], color='black', alpha=0.55, linestyle='dashed', linewidth=1)
+    plt.axvline(hpd683[0], color='black', alpha=0.95, linestyle='dashed', linewidth=1)
+    plt.axvline(hpd683[1], color='black', alpha=0.95, linestyle='dashed', linewidth=1)
+    plt.axvline(trace_mean, color='black', alpha=0.95, linestyle='dashed', linewidth=2)
+    ticks = hpd9999.tolist() + hpd95.tolist() + hpd683.tolist() + [trace_mean]
+    ax.set_xticks(ticks)
+    ax.set_xticklabels(list("%.4f" % tick for tick in ticks))
+    ax.set_yticks([])
+
+    plt.title("Posterior distributions of the variable {}".format(var_name))
+    plt.xlabel("{} value".format(var_name))
+    plt.tight_layout()
+
+    ax = plt.subplot(212)
+    ax.set_xticks([])
+    plt.plot(trace)
+    plt.axhline(hpd95[0], color='black', alpha=0.55, linestyle='dashed', linewidth=1)
+    plt.axhline(hpd95[1], color='black', alpha=0.55, linestyle='dashed', linewidth=1)
+    plt.axhline(hpd683[0], color='black', alpha=0.95, linestyle='dashed', linewidth=1)
+    plt.axhline(hpd683[1], color='black', alpha=0.95, linestyle='dashed', linewidth=1)
+    plt.axhline(trace_mean, color='black', alpha=0.95, linestyle='dashed', linewidth=2)
+    plt.title("Values of the trace for {}".format(var_name))
+    plt.tight_layout()
+    plt.savefig(fname)
+    plt.clf()
+
+def plot_2d_hist(x, y, fname):
+    sns.jointplot(x, y, kind="hex", stat_func=None)
+    plt.savefig(fname)
+    plt.clf()
+
+def print_hpd(var, lvl):
+    print("{} {}% HPD: {}".format(var.__name__, int(lvl*100), pymc.utils.hpd(var.trace[:] , 1.-lvl)))
 
 def degToRad(degs):
     return degs*(math.pi/180)

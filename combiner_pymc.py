@@ -1,57 +1,83 @@
 import pymc, seaborn as sns
-import sys
 import gzip
 import commons
 from pymc import Exponential, deterministic, Poisson, Uniform, Normal, observed, MCMC, Matplot, stochastic
-from itertools import combinations
 from ggsz_native import plot, plot_2d_hist
+from argparse import ArgumentParser
+from operator import itemgetter
 
-import matplotlib.pyplot as plt
 import matplotlib
 import matplotlib.ticker
 
 import PyGammaCombo
 tstr = PyGammaCombo.TString
 
+def parse_dv(args):
+    if len(args) % 3 != 0:
+        raise ValueError("-vars must contain data in format var_name lower_bound upper_bound")
+    names = itemgetter(*range(0,len(args),3))(args)
+    lower_bounds = list(map(float, itemgetter(*range(1,len(args),3))(args)))
+    upper_bounds = list(map(float, itemgetter(*range(2,len(args),3))(args)))
+    return names, lower_bounds, upper_bounds
+
+ap = ArgumentParser("Using Monte-Carlo Markov-Chains for estimating LHC fits.")
+
+# Default constants
+ap.add_argument('-n', action='store', default=1000000, help='Number of events')
+ap.add_argument('-c', action='store', required=True, help='Number of the combination')
+ap.add_argument('-i', action='store_true', help='Print information about combiner')
+ap.add_argument('-vars', nargs='+', required=True, help='Print information about combiner')
+args = vars(ap.parse_args())
+
 # Constants
+N = int(args['n'])
+combination = int(args['c'])
+print_information = bool(args['i'])
+desired_variables, lower_bounds, upper_bounds = parse_dv(args['vars'])
+
 sns.set_style("whitegrid")
 matplotlib.rcParams.update({'font.size': 10})
-if len(sys.argv) == 2: # Set sample size (N/10 used for burning out)
-    N = int(sys.argv[1])
-else:
-    N = 1000000
 pgc_utils = PyGammaCombo.gammacombo_utils
 cout = PyGammaCombo.gammacombo_utils.getCout()
+extract = PyGammaCombo.gammacombo_utils.extractFromRooArgSet
+toRooRealVar = PyGammaCombo.gammacombo_utils.toRooRealVar
 
 if __name__ == "__main__":
-    for name, lower_limit, upper_limit in [('q1', 0, 180)]:
-        print("Calculations for {}...".format(name))
-        # Vars
-        gamma = Uniform("gamma", doc="$\gamma$", lower=lower_limit, upper=upper_limit)
-        deltaB = Uniform("deltaB", doc="$\delta_B$", lower=lower_limit, upper=upper_limit)
-        rB = Uniform("rB", doc='$r_B$', lower=0.02, upper=0.2)
-        var_list = [gamma, deltaB, rB]
-        gce = PyGammaCombo.gammacombo_utils.getGammaComboEngine("")
-        cmb = gce.getCombiner(25)
-        cmb.combine()
-        parameters = cmb.getParameters()
-        pdf = cmb.getPdf()
+    gce = PyGammaCombo.gammacombo_utils.getGammaComboEngine("")
+    cmb = gce.getCombiner(combination)
+    cmb.combine()
+    parameters = cmb.getParameters()
+    parameter_names = list(cmb.getParameterNames())
+    pdf = cmb.getPdf()
+    if print_information:
+        print("Required parameters for combination:")
+        for p in parameter_names:
+            param = extract(parameters, p)
+            param.Print()
 
-        #Averaged experiments
-        @stochastic
-        def combi(gamma=gamma, deltaB=deltaB, rB=rB, value=0):
-            parameters.setRealValue("g", commons.degToRad(gamma))
-            parameters.setRealValue("r_dk", rB)
-            parameters.setRealValue("d_dk", commons.degToRad(deltaB))
-            return pdf.getLogVal()
+    # Declare vars
+    var_dict = {}
+    for i, p in enumerate(desired_variables):
+        param = toRooRealVar(extract(parameters, p))
+        var_dict[p] = Uniform(p, doc="{}".format(p), lower=lower_bounds[i], upper=upper_bounds[i])
 
-        mcmc = MCMC([combi, gamma, deltaB, rB],
-                    db='pickle',
-                    dbmode='w',
-                    dbname='mcmc-{}_combiner.pickle'.format(name))
-        mcmc.sample(iter = N, burn = min(5000, int(N/10)), thin = 1)
+    # Dynamically create PyMC sampling function
+    stochastic_args = ','.join(["{}=var_dict['{}']".format(k, k) for k in var_dict.keys()])
+    exec("@stochastic\n"
+         "def combi({}, value=0):\n"
+         "\tfor p in desired_variables:\n"
+         "\t\tparameters.setRealValue(p, var_dict[p])\n"
+         "\treturn pdf.getLogVal()\n".format(stochastic_args))
 
-        for v in var_list:
-            plot(mcmc.trace(v.__name__)[:], v.__doc__, "output/{}_{}.png".format(name, v.__name__))
-            with gzip.open("output/{}.dat.gz".format(v.__name__), 'wb') as file:
-                file.write(mcmc.trace(v.__name__)[:].tostring())
+    # Define and start sampling
+    mcmc = MCMC([combi] + list(var_dict.values()),
+                db='pickle',
+                dbmode='w',
+                dbname='mcmc-{}_combiner.pickle'.format(combination))
+    mcmc.sample(iter = N, burn = min(5000, int(N/10)), thin = 1)
+
+    # Output
+    for v in desired_variables:
+        plot(mcmc.trace(v)[:], v, "output/{}_{}.png".format(combination, v))
+        with gzip.open("output/{}.dat.gz".format(v), 'wb') as file:
+            file.write(mcmc.trace(v)[:].tostring())
