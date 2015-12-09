@@ -7,9 +7,12 @@ from operator import itemgetter
 
 import matplotlib
 import matplotlib.ticker
+import pickle
 
 import PyGammaCombo
 tstr = PyGammaCombo.TString
+
+import numpy as np
 
 def parse_dv(args):
     if len(args) % 3 != 0:
@@ -33,6 +36,7 @@ N = int(args['n'])
 combination = int(args['c'])
 print_information = bool(args['i'])
 desired_variables, lower_bounds, upper_bounds = parse_dv(args['vars'])
+burnout = min(5000, int(N/10))
 
 sns.set_style("whitegrid")
 matplotlib.rcParams.update({'font.size': 10})
@@ -73,10 +77,15 @@ if __name__ == "__main__":
                 db='pickle',
                 dbmode='w',
                 dbname='mcmc-{}_combiner.pickle'.format(combination))
-    mcmc.sample(iter = N, burn = min(5000, int(N/10)), thin = 1)
+    mcmc.sample(iter = N, burn = burnout, thin = 1)
 
     # Output
+    data = {v: mcmc.trace(v)[:] for v in desired_variables}
+    with gzip.open('output/raw.dat.gz', 'w') as file:
+        pickle.dump(data, file)
     for v in desired_variables:
-        commons.plot(mcmc.trace(v)[:], v, "output/{}_{}.png".format(combination, v))
-        with gzip.open("output/{}.dat.gz".format(v), 'wb') as file:
-            file.write(mcmc.trace(v)[:].tostring())
+        commons.plot(data[v], combination, v)
+
+
+
+

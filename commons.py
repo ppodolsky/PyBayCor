@@ -1,22 +1,23 @@
+import gzip
 import math
+import matplotlib.pyplot as plt
 import numpy as np
+import pickle
+import pymc
+import seaborn
 import sympy as sp
 
-from sympy.utilities.lambdify import lambdify
-import matplotlib.pyplot as plt
-import pymc
-
 # Output fuctions
-def plot(trace, var_name, fname):
-    hpd9999 = pymc.utils.hpd(trace , 1.-0.9999)
-    hpd95 = pymc.utils.hpd(trace , 1.-0.95)
-    hpd683 = pymc.utils.hpd(trace , 1.-0.683)
+def plot(trace, combination, var_name):
+    hpd9999 = pymc.utils.hpd(trace, 1.-0.9999)
+    hpd95 = pymc.utils.hpd(trace, 1.-0.95)
+    hpd683 = pymc.utils.hpd(trace, 1.-0.683)
     trace_mean = trace.mean()
 
     plt.autoscale(tight=True)
     plt.tight_layout()
 
-    ax = plt.subplot(211)
+    ax = plt.subplot(111)
     plt.xticks(rotation=70)
     plt.hist(trace[(hpd9999[0] < trace) & (trace < hpd9999[1])], histtype='stepfilled', bins=100, alpha=0.75, color="#A60628", normed=True)
     plt.axvline(hpd95[0], color='black', alpha=0.55, linestyle='dashed', linewidth=1)
@@ -30,10 +31,9 @@ def plot(trace, var_name, fname):
     ax.set_yticks([])
 
     plt.title("Posterior distributions of the variable {}".format(var_name))
-    plt.xlabel("{} value".format(var_name))
     plt.tight_layout()
 
-    ax = plt.subplot(212)
+    '''ax = plt.subplot(212)
     ax.set_xticks([])
     plt.plot(trace)
     plt.axhline(hpd95[0], color='black', alpha=0.55, linestyle='dashed', linewidth=1)
@@ -42,12 +42,16 @@ def plot(trace, var_name, fname):
     plt.axhline(hpd683[1], color='black', alpha=0.95, linestyle='dashed', linewidth=1)
     plt.axhline(trace_mean, color='black', alpha=0.95, linestyle='dashed', linewidth=2)
     plt.title("Values of the trace for {}".format(var_name))
-    plt.tight_layout()
-    plt.savefig(fname)
+    plt.tight_layout()'''
+    plt.savefig('output/{}_{}.png'.format(combination, var_name))
     plt.clf()
+    with open('output/hpd_95_{}_{}.txt'.format(combination, var_name), 'w+') as file:
+        file.writelines("{} {}".format(hpd95[0], hpd95[1]))
+    with open('output/hpd_683_{}_{}.txt'.format(combination, var_name), 'w+') as file:
+        file.writelines("{} {}".format(hpd683[0], hpd683[1]))
 
 def plot_2d_hist(x, y, fname):
-    sns.jointplot(x, y, kind="hex", stat_func=None)
+    seaborn.jointplot(x, y, kind="hex", stat_func=None)
     plt.savefig(fname)
     plt.clf()
 
@@ -70,7 +74,9 @@ def x_minus(gamma, deltaB, rB):
 def y_minus(gamma, deltaB, rB):
     return rB*sin(deltaB - gamma)
 
-
+def load(fname = "output/raw.dat.gz"):
+    with gzip.open(fname, 'r') as file:
+        return pickle.load(file)
 gamma = sp.Symbol('gamma')
 deltaB = sp.Symbol('deltaB')
 rB = sp.Symbol('rB')
