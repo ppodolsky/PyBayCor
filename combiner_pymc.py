@@ -28,13 +28,15 @@ ap = ArgumentParser("Using Monte-Carlo Markov-Chains for estimating LHC fits.")
 ap.add_argument('-n', action='store', default=1000000, help='Number of events')
 ap.add_argument('-c', action='store', required=True, help='Number of the combination')
 ap.add_argument('-i', action='store_true', help='Print information about combiner')
-ap.add_argument('-vars', nargs='+', required=True, help='Print information about combiner')
+ap.add_argument('-u', action='store_true', help='Switch combination function to uniform')
+ap.add_argument('-vars', nargs='+', required=True, help='Variables')
 args = vars(ap.parse_args())
 
 # Constants
 N = int(args['n'])
 combination = int(args['c'])
 print_information = bool(args['i'])
+is_uniform = bool(args['u'])
 desired_variables, lower_bounds, upper_bounds = parse_dv(args['vars'])
 burnout = min(5000, int(N/10))
 
@@ -66,12 +68,16 @@ if __name__ == "__main__":
 
     # Dynamically create PyMC sampling function
     stochastic_args = ','.join(["{}=var_dict['{}']".format(k, k) for k in var_dict.keys()])
-    exec("@stochastic\n"
-         "def combi({}, value=0):\n"
-         "\tfor p in desired_variables:\n"
-         "\t\tparameters.setRealValue(p, var_dict[p])\n"
-         "\treturn pdf.getLogVal()\n".format(stochastic_args))
-
+    if is_uniform:
+        exec("@stochastic\n"
+             "def combi({}, value=0):\n"
+             "\treturn 1\n".format(stochastic_args))
+    else:
+        exec("@stochastic\n"
+             "def combi({}, value=0):\n"
+             "\tfor p in desired_variables:\n"
+             "\t\tparameters.setRealValue(p, var_dict[p])\n"
+             "\treturn pdf.getLogVal()\n".format(stochastic_args))
     # Define and start sampling
     mcmc = MCMC([combi] + list(var_dict.values()),
                 db='pickle',
