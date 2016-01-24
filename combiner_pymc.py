@@ -14,30 +14,41 @@ tstr = PyGammaCombo.TString
 
 import numpy as np
 
-def parse_dv(args):
+def parse_dv(args, bins):
     if len(args) % 3 != 0:
         raise ValueError("-vars must contain data in format var_name lower_bound upper_bound")
-    names = itemgetter(*range(0,len(args),3))(args)
-    lower_bounds = list(map(float, itemgetter(*range(1,len(args),3))(args)))
-    upper_bounds = list(map(float, itemgetter(*range(2,len(args),3))(args)))
-    return names, lower_bounds, upper_bounds
+    arglen = 4 if bins else 3
+    names = args[0:len(args):arglen]
+    lower_bounds = list(map(float, args[1:len(args):arglen]))
+    upper_bounds = list(map(float, args[2:len(args):arglen]))
+    if bins:
+        bin_number = list(map(int, args[3:len(args):arglen]))
+        edges = {}
+        for i, name in enumerate(names):
+            edges[name] = np.linspace(lower_bounds[i], upper_bounds[i], bin_number[i] + 1)
+        return names, lower_bounds, upper_bounds, edges
+    else:
+        return names, lower_bounds, upper_bounds, None
+
 
 ap = ArgumentParser("Using Monte-Carlo Markov-Chains for estimating LHC fits.")
 
 # Default constants
-ap.add_argument('-n', action='store', default=1000000, help='Number of events')
-ap.add_argument('-c', action='store', required=True, help='Number of the combination')
+ap.add_argument('-n', action='store', default=1000000, type=int, help='Number of events')
+ap.add_argument('-c', action='store', required=True, type=int, help='Number of the combination')
+ap.add_argument('-bins', action='store_true', help='If set, then output as histrograms')
 ap.add_argument('-i', action='store_true', help='Print information about combiner')
 ap.add_argument('-u', action='store_true', help='Switch combination function to uniform')
 ap.add_argument('-vars', nargs='+', required=True, help='Variables')
 args = vars(ap.parse_args())
 
 # Constants
-N = int(args['n'])
-combination = int(args['c'])
-print_information = bool(args['i'])
-is_uniform = bool(args['u'])
-desired_variables, lower_bounds, upper_bounds = parse_dv(args['vars'])
+N = args['n']
+combination = args['c']
+print_information = args['i']
+is_uniform = args['u']
+bins = args['bins']
+desired_variables, lower_bounds, upper_bounds, edges = parse_dv(args['vars'], bins)
 burnout = min(5000, int(N/10))
 
 sns.set_style("whitegrid")
@@ -68,12 +79,7 @@ if __name__ == "__main__":
 
     # Dynamically create PyMC sampling function
     stochastic_args = ','.join(["{}=var_dict['{}']".format(k, k) for k in var_dict.keys()])
-    if is_uniform:
-        exec("@stochastic\n"
-             "def combi({}, value=0):\n"
-             "\treturn 1\n".format(stochastic_args))
-    else:
-        exec("@stochastic\n"
+    exec("@stochastic\n"
              "def combi({}, value=0):\n"
              "\tfor p in desired_variables:\n"
              "\t\tparameters.setRealValue(p, var_dict[p])\n"
@@ -83,12 +89,19 @@ if __name__ == "__main__":
                 db='pickle',
                 dbmode='w',
                 dbname='mcmc-{}_combiner.pickle'.format(combination))
-    mcmc.sample(iter = N, burn = burnout, thin = 1)
+    mcmc.sample(iter=N, burn=burnout, thin=1)
 
     # Output
     data = {v: mcmc.trace(v)[:] for v in desired_variables}
-    with gzip.open('output/raw.dat.gz', 'w') as file:
-        pickle.dump(data, file)
+    if bins:
+        with  gzip.open('output/bins.dat.gz', 'w') as file:
+            data_to_save = {}
+            for v in data:
+                data_to_save[v] = np.histogram(data[v], bins=edges[v])
+            pickle.dump(data_to_save, file)
+    else:
+        with gzip.open('output/raw.dat.gz', 'w') as file:
+            pickle.dump(data, file)
     for v in desired_variables:
         commons.plot(data[v], combination, v)
 
