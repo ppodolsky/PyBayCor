@@ -98,10 +98,10 @@ if __name__ == "__main__":
             data_to_save = {}
             for v in data:
                 data_to_save[v] = np.histogram(data[v], bins=edges[v])
-            pickle.dump(data_to_save, file)
+            pickle.dump(data_to_save, file, protocol=2)
     else:
         with gzip.open('output/raw.dat.gz', 'w') as file:
-            pickle.dump(data, file)
+            pickle.dump(data, file, protocol=2)
     for v in desired_variables:
         commons.plot(data[v], combination, v)
 
