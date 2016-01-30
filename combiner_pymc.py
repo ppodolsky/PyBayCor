@@ -8,6 +8,7 @@ from operator import itemgetter
 import matplotlib
 import matplotlib.ticker
 import pickle
+import random
 
 import PyGammaCombo
 tstr = PyGammaCombo.TString
@@ -35,6 +36,7 @@ ap = ArgumentParser("Using Monte-Carlo Markov-Chains for estimating LHC fits.")
 
 # Default constants
 ap.add_argument('-n', action='store', default=1000000, type=int, help='Number of events')
+ap.add_argument('-b', action='store', default=5000, type=int, help='Number of burnout')
 ap.add_argument('-c', action='store', required=True, type=int, help='Number of the combination')
 ap.add_argument('-bins', action='store_true', help='If set, then output as histrograms')
 ap.add_argument('-i', action='store_true', help='Print information about combiner')
@@ -46,10 +48,10 @@ args = vars(ap.parse_args())
 N = args['n']
 combination = args['c']
 print_information = args['i']
-is_uniform = args['u']
+is_mcmc = not args['u']
 bins = args['bins']
+burnout = args['b']
 desired_variables, lower_bounds, upper_bounds, edges = parse_dv(args['vars'], bins)
-burnout = min(5000, int(N/10))
 
 sns.set_style("whitegrid")
 matplotlib.rcParams.update({'font.size': 10})
@@ -71,40 +73,56 @@ if __name__ == "__main__":
             param = extract(parameters, p)
             param.Print()
 
-    # Declare vars
-    var_dict = {}
-    for i, p in enumerate(desired_variables):
-        param = toRooRealVar(extract(parameters, p))
-        var_dict[p] = Uniform(p, doc="{}".format(p), lower=lower_bounds[i], upper=upper_bounds[i])
+    if is_mcmc:
+        # Declare vars
+        var_dict = {}
+        for i, p in enumerate(desired_variables):
+            var_dict[p] = Uniform(p, doc="{}".format(p), lower=lower_bounds[i], upper=upper_bounds[i])
 
-    # Dynamically create PyMC sampling function
-    stochastic_args = ','.join(["{}=var_dict['{}']".format(k, k) for k in var_dict.keys()])
-    exec("@stochastic\n"
-             "def combi({}, value=0):\n"
-             "\tfor p in desired_variables:\n"
-             "\t\tparameters.setRealValue(p, var_dict[p])\n"
-             "\treturn pdf.getLogVal()\n".format(stochastic_args))
-    # Define and start sampling
-    mcmc = MCMC([combi] + list(var_dict.values()),
-                db='pickle',
-                dbmode='w',
-                dbname='mcmc-{}_combiner.pickle'.format(combination))
-    mcmc.sample(iter=N, burn=burnout, thin=1)
+        # Dynamically create PyMC sampling function
+        stochastic_args = ','.join(["{}=var_dict['{}']".format(k, k) for k in var_dict.keys()])
+        exec("@stochastic\n"
+                 "def combi({}, value=0):\n"
+                 "\tfor p in desired_variables:\n"
+                 "\t\tparameters.setRealValue(p, var_dict[p])\n"
+                 "\treturn pdf.getLogVal()\n".format(stochastic_args))
+        # Define and start sampling
+        mcmc = MCMC([combi] + list(var_dict.values()),
+                    db='pickle',
+                    dbmode='w',
+                    dbname='mcmc-{}_combiner.pickle'.format(combination))
+        mcmc.sample(iter=N, burn=burnout, thin=1)
 
-    # Output
-    data = {v: mcmc.trace(v)[:] for v in desired_variables}
-    if bins:
-        with  gzip.open('output/bins.dat.gz', 'w') as file:
-            data_to_save = {}
-            for v in data:
-                data_to_save[v] = np.histogram(data[v], bins=edges[v])
-            pickle.dump(data_to_save, file, protocol=2)
-    else:
-        with gzip.open('output/raw.dat.gz', 'w') as file:
-            pickle.dump(data, file, protocol=2)
-    for v in desired_variables:
-        commons.plot(data[v], combination, v)
+        # Output
+        data = {v: mcmc.trace(v)[:] for v in desired_variables}
+        if bins:
+            with  gzip.open('output/bins.dat.gz', 'w') as file:
+                data_to_save = {}
+                for v in data:
+                    data_to_save[v] = np.histogram(data[v], bins=edges[v])
+                pickle.dump(data_to_save, file, protocol=2)
+        else:
+            with gzip.open('output/raw.dat.gz', 'w') as file:
+                pickle.dump(data, file, protocol=2)
+        for v in desired_variables:
+            commons.plot(data[v], combination, v)
 
-
-
-
+    else: #not MCMC
+        var_dict = {}
+        weights = []
+        data = {v: [] for v in desired_variables}
+        for i in range(N):
+            for i, p in enumerate(desired_variables):
+                rval = np.random.uniform(lower_bounds[i], upper_bounds[i])
+                data[p].append(rval)
+                parameters.setRealValue(p, rval)
+            weights.append(pdf.getLogVal())
+        if bins:
+            with  gzip.open('output/bins.dat.gz', 'w') as file:
+                data_to_save = {}
+                for v in data:
+                    data_to_save[v] = np.histogram(data[v], bins=edges[v], weights=weights)
+                pickle.dump(data_to_save, file, protocol=2)
+        else:
+            with gzip.open('output/raw.dat.gz', 'w') as file:
+                pickle.dump({'data': data, 'weights': weights}, file, protocol=2)
