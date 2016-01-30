@@ -117,12 +117,7 @@ if __name__ == "__main__":
                 rval = np.random.uniform(lower_bounds[i], upper_bounds[i])
                 data[p].append(rval)
                 parameters.setRealValue(p, rval)
-            lval = pdf.getVal()
-            if lval != 0:
-                weights.append(lval)
-            else:
-                for p in desired_variables:
-                    del data[p][-1]
+            weights.append(pdf.getVal())
         if bins:
             with gzip.open('output/bins.dat.gz', 'w') as file:
                 data_to_save = {}
