@@ -7,6 +7,7 @@ from operator import itemgetter
 
 import matplotlib
 import matplotlib.ticker
+import matplotlib.pyplot as plt
 import pickle
 import random
 
@@ -116,12 +117,22 @@ if __name__ == "__main__":
                 rval = np.random.uniform(lower_bounds[i], upper_bounds[i])
                 data[p].append(rval)
                 parameters.setRealValue(p, rval)
-            weights.append(pdf.getLogVal())
+            lval = pdf.getVal()
+            if lval != 0:
+                weights.append(lval)
+            else:
+                for p in desired_variables:
+                    del data[p][-1]
         if bins:
-            with  gzip.open('output/bins.dat.gz', 'w') as file:
+            with gzip.open('output/bins.dat.gz', 'w') as file:
                 data_to_save = {}
                 for v in data:
                     data_to_save[v] = np.histogram(data[v], bins=edges[v], weights=weights)
+                    hist, bin_edges = data_to_save[v]
+                    plt.bar(bin_edges[:-1], hist, width=(max(bin_edges) - min(bin_edges))/len(bin_edges))
+                    plt.xlim(min(bin_edges), max(bin_edges))
+                    plt.savefig('output/{}_{}.png'.format(combination, v))
+                    plt.clf()
                 pickle.dump(data_to_save, file, protocol=2)
         else:
             with gzip.open('output/raw.dat.gz', 'w') as file:
