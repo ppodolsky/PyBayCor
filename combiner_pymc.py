@@ -17,8 +17,6 @@ tstr = PyGammaCombo.TString
 import numpy as np
 
 def parse_dv(args, bins):
-    if len(args) % 3 != 0:
-        raise ValueError("-vars must contain data in format var_name lower_bound upper_bound")
     arglen = 4 if bins else 3
     names = args[0:len(args):arglen]
     lower_bounds = list(map(float, args[1:len(args):arglen]))
@@ -101,10 +99,10 @@ if __name__ == "__main__":
                 data_to_save = {}
                 for v in data:
                     data_to_save[v] = np.histogram(data[v], bins=edges[v])
-                pickle.dump(data_to_save, file, protocol=2)
+                pickle.dump({'data': data_to_save}, file, protocol=2)
         else:
             with gzip.open('output/raw.dat.gz', 'w') as file:
-                pickle.dump(data, file, protocol=2)
+                pickle.dump({'data': data}, file, protocol=2)
         for v in desired_variables:
             commons.plot(data[v], combination, v)
 
@@ -128,7 +126,7 @@ if __name__ == "__main__":
                     plt.xlim(min(bin_edges), max(bin_edges))
                     plt.savefig('output/{}_{}.png'.format(combination, v))
                     plt.clf()
-                pickle.dump(data_to_save, file, protocol=2)
+                pickle.dump({'data': data_to_save}, file, protocol=2)
         else:
             with gzip.open('output/raw.dat.gz', 'w') as file:
                 pickle.dump({'data': data, 'weights': weights}, file, protocol=2)
