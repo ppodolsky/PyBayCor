@@ -1,16 +1,16 @@
 import pymc, seaborn as sns
 import gzip
 import commons
-from pymc import Exponential, deterministic, Poisson, Uniform, Normal, observed, MCMC, Matplot, stochastic
-from argparse import ArgumentParser
-from operator import itemgetter
-
+import sys
 import matplotlib
 import matplotlib.ticker
 import matplotlib.pyplot as plt
 import pickle
 import random
 import time
+from pymc import Exponential, deterministic, Poisson, Uniform, Normal, observed, MCMC, Matplot, stochastic
+from argparse import ArgumentParser
+from operator import itemgetter
 
 import PyGammaCombo
 tstr = PyGammaCombo.TString
@@ -44,6 +44,7 @@ ap.add_argument('-plot', action='store_true', help='Plot bars and graphs')
 ap.add_argument('-u', action='store_true', help='Switch combination function to uniform')
 ap.add_argument('-vars', nargs='+', required=True, help='Variables')
 args = vars(ap.parse_args())
+print(' '.join(sys.argv))
 
 # Constants
 N = args['n']
