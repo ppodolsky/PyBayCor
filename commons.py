@@ -9,6 +9,14 @@ import sympy as sp
 
 # Output fuctions
 def plot(trace, combination, var_name, trunc9999=False, weights=None):
+    '''
+    :param trace: ndarray to plot
+    :param combination: name of combination (can use just its number)
+    :param var_name: name of variable
+    :param trunc9999: should we truncate tails at HPD 99.99 level in plot? It crops outliers and reduces domain
+    :param weights: weights of points. None for equal weights.
+    :return: None
+    '''
     is_weighted = weights is not None
     if not is_weighted:
         weights = np.array([1]*len(trace))
