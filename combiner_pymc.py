@@ -76,6 +76,7 @@ if __name__ == "__main__":
         for p in parameter_names:
             param = extract(parameters, p)
             param.Print()
+    weights=None
 
     if is_mcmc:
         # Declare vars
@@ -107,10 +108,6 @@ if __name__ == "__main__":
         else:
             with gzip.open('output/raw.dat.gz', 'w') as file:
                 pickle.dump({'data': data}, file, protocol=2)
-        if plot_graph:
-            for v in desired_variables:
-                commons.plot(data[v], combination, v)
-
     else: #not MCMC
         var_dict = {}
         weights = []
@@ -126,15 +123,12 @@ if __name__ == "__main__":
                 data_to_save = {}
                 for v in data:
                     data_to_save[v] = np.histogram(data[v], bins=edges[v], weights=weights)
-                    if plot_graph:
-                        hist, bin_edges = data_to_save[v]
-                        plt.bar(bin_edges[:-1], hist, width=(max(bin_edges) - min(bin_edges))/len(bin_edges))
-                        plt.xlim(min(bin_edges), max(bin_edges))
-                        plt.savefig('output/{}_{}.png'.format(combination, v))
-                        plt.clf()
                 pickle.dump({'data': data_to_save}, file, protocol=2)
         else:
             with gzip.open('output/raw.dat.gz', 'w') as file:
                 pickle.dump({'data': data, 'weights': weights}, file, protocol=2)
+    if plot_graph:
+        for v in desired_variables:
+            commons.plot(np.array(data[v]), combination, v, weights=weights)
 
     print("Total time: {}".format(time.time() - start_time))

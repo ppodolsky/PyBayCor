@@ -8,24 +8,33 @@ import seaborn
 import sympy as sp
 
 # Output fuctions
-def plot(trace, combination, var_name):
+def plot(trace, combination, var_name, trunc9999=False, weights=None):
+    is_weighted = weights is not None
+    if not is_weighted:
+        weights = np.array([1]*len(trace))
     hpd9999 = pymc.utils.hpd(trace, 1.-0.9999)
     hpd95 = pymc.utils.hpd(trace, 1.-0.95)
     hpd683 = pymc.utils.hpd(trace, 1.-0.683)
     trace_mean = trace.mean()
+
+    ticks = []
 
     plt.autoscale(tight=True)
     plt.tight_layout()
 
     ax = plt.subplot(111)
     plt.xticks(rotation=70)
-    plt.hist(trace[(hpd9999[0] < trace) & (trace < hpd9999[1])], histtype='stepfilled', bins=100, alpha=0.75, color="#A60628", normed=True)
-    plt.axvline(hpd95[0], color='black', alpha=0.55, linestyle='dashed', linewidth=1)
-    plt.axvline(hpd95[1], color='black', alpha=0.55, linestyle='dashed', linewidth=1)
-    plt.axvline(hpd683[0], color='black', alpha=0.95, linestyle='dashed', linewidth=1)
-    plt.axvline(hpd683[1], color='black', alpha=0.95, linestyle='dashed', linewidth=1)
-    plt.axvline(trace_mean, color='black', alpha=0.95, linestyle='dashed', linewidth=2)
-    ticks = hpd9999.tolist() + hpd95.tolist() + hpd683.tolist() + [trace_mean]
+    trace_for_draw = trace
+    if trunc9999:
+        trace_for_draw = trace[(hpd9999[0] < trace) & (trace < hpd9999[1])]
+    plt.hist(trace_for_draw, weights=weights, histtype='stepfilled', bins=100, alpha=0.75, color="#A60628", normed=True)
+    if not is_weighted:
+        plt.axvline(hpd95[0], color='black', alpha=0.55, linestyle='dashed', linewidth=1)
+        plt.axvline(hpd95[1], color='black', alpha=0.55, linestyle='dashed', linewidth=1)
+        plt.axvline(hpd683[0], color='black', alpha=0.95, linestyle='dashed', linewidth=1)
+        plt.axvline(hpd683[1], color='black', alpha=0.95, linestyle='dashed', linewidth=1)
+        plt.axvline(trace_mean, color='black', alpha=0.95, linestyle='dashed', linewidth=2)
+        ticks = hpd9999.tolist() + hpd95.tolist() + hpd683.tolist() + [trace_mean]
     ax.set_xticks(ticks)
     ax.set_xticklabels(list("%.4f" % tick for tick in ticks))
     ax.set_yticks([])
