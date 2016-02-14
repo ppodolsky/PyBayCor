@@ -8,7 +8,7 @@ import seaborn
 import sympy as sp
 
 # Output fuctions
-def plot(trace, combination, var_name, trunc9999=False, weights=None):
+def plot(trace, combination, var_name, trunc9999=False, weights=None, bins=400):
     '''
     :param trace: ndarray to plot
     :param combination: name of combination (can use just its number)
@@ -25,24 +25,25 @@ def plot(trace, combination, var_name, trunc9999=False, weights=None):
     hpd683 = pymc.utils.hpd(trace, 1.-0.683)
     trace_mean = trace.mean()
 
-    ticks = []
-
     plt.autoscale(tight=True)
     plt.tight_layout()
 
     ax = plt.subplot(111)
     plt.xticks(rotation=70)
-    trace_for_draw = trace
     if trunc9999:
-        trace_for_draw = trace[(hpd9999[0] < trace) & (trace < hpd9999[1])]
-    plt.hist(trace_for_draw, weights=weights, histtype='stepfilled', bins=100, alpha=0.75, color="#A60628", normed=True)
+        filter = (hpd9999[0] < trace) & (trace < hpd9999[1])
+        trace = trace[filter]
+        weights = weights[filter]
+
+    ticks = [min(trace), max(trace)]
+    plt.hist(trace, weights=weights, histtype='stepfilled', bins=bins, alpha=0.75, color="#A60628", normed=True)
     if not is_weighted:
         plt.axvline(hpd95[0], color='black', alpha=0.55, linestyle='dashed', linewidth=1)
         plt.axvline(hpd95[1], color='black', alpha=0.55, linestyle='dashed', linewidth=1)
         plt.axvline(hpd683[0], color='black', alpha=0.95, linestyle='dashed', linewidth=1)
         plt.axvline(hpd683[1], color='black', alpha=0.95, linestyle='dashed', linewidth=1)
         plt.axvline(trace_mean, color='black', alpha=0.95, linestyle='dashed', linewidth=2)
-        ticks = hpd9999.tolist() + hpd95.tolist() + hpd683.tolist() + [trace_mean]
+        ticks = ticks + hpd95.tolist() + hpd683.tolist() + [trace_mean]
     ax.set_xticks(ticks)
     ax.set_xticklabels(list("%.4f" % tick for tick in ticks))
     ax.set_yticks([])
