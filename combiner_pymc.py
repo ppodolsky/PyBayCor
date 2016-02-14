@@ -122,6 +122,8 @@ if __name__ == "__main__":
         var_dict = {}
         weights = []
         data = {v: [] for v in variables}
+        for name in variables:
+            print("{}: [{};{}]".format(name, variables[name]['min'], variables[name]['max']))
         for i in range(N):
             for name in variables:
                 rval = np.random.uniform(variables[name]['min'], variables[name]['max'])
